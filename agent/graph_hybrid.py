@@ -1,10 +1,13 @@
-<<<<<<< HEAD
 from agent.tools.sqlite_tool import SQLiteTool
 from agent.rag.retrieval import Retriever
 from agent.dspy_signatures import router, synthesize
 from typing import List, Dict, Any
 import re
-import ollama   # <— correct API
+
+try:  # Optional: the template and RAG paths work without a local LLM installed.
+    import ollama
+except ImportError:  # pragma: no cover - exercised only when the extra is absent
+    ollama = None
 
 
 class HybridAgent:
@@ -13,7 +16,8 @@ class HybridAgent:
     def __init__(self, use_llm=True):
         self.retriever = Retriever()
         self.sql_tool = SQLiteTool()
-        self.use_llm = use_llm
+        # Fall back to the SQL templates when the ollama client is not installed.
+        self.use_llm = use_llm and ollama is not None
 
     # ------------------------------------------------------
     # MAIN ENTRY
@@ -68,7 +72,7 @@ Return ONLY the SQL. No explanation.
             prompt=prompt
         )
 
-        sql = response.get("text", "").strip()
+        sql = response.get("response", "").strip()
 
         rows, err = self.sql_tool.run_query(sql)
         if err or not rows:
@@ -172,77 +176,3 @@ Return ONLY the SQL. No explanation.
 
         m = re.search(r"(\d+)", text)
         return int(m.group(1)) if m else 0
-=======
-from agent.tools.sqlite_tool import SQLiteTool
-from agent.rag.retrieval import Retriever
-from agent.dspy_signatures import router, synthesize
-from typing import List, Dict, Any
-import re
-
-# If using Ollama Phi-3.5-mini
-from ollama import Ollama
-
-class HybridAgentLLM:
-    """Hybrid Agent with optional LLM for SQL generation or answers."""
-
-    def __init__(self, use_llm=True):
-        self.retriever = Retriever()
-        self.sql_tool = SQLiteTool()
-        self.use_llm = use_llm
-        if use_llm:
-            self.llm = Ollama(model="phi-3.5-mini-instruct")
-
-    def ask(self, query: str, format_hint: str) -> Dict[str, Any]:
-        route = router(query)
-        docs = self.retriever.retrieve(query)
-
-        # Use LLM to generate SQL or answer
-        if self.use_llm and route in ["sql", "hybrid"]:
-            result, sql = self._llm_generate_sql(query, docs, format_hint)
-            if result is not None:
-                return synthesize(result, docs, sql, format_hint)
-
-        # Fallback to current SQL template method
-        if route in ["sql", "hybrid"]:
-            result, sql = self._try_sql(query, docs, format_hint)
-            if result is not None:
-                return synthesize(result, docs, sql, format_hint)
-
-        # Fallback to RAG
-        if docs:
-            doc = docs[0]["content"]
-            result = self._parse_int(doc, query) if format_hint == "int" else doc
-            return synthesize(result, docs, "", format_hint)
-
-        return synthesize(None, docs, "", format_hint)
-
-    def _llm_generate_sql(self, query: str, docs: List[Dict], fmt: str) -> tuple[Any, str]:
-        """Use LLM to generate SQL and execute it."""
-        doc_texts = "\n\n".join([d["content"] for d in docs])
-        prompt = f"""
-You are a SQL assistant. Given the following documents:
-{doc_texts}
-
-Generate a SQL query to answer the question:
-{query}
-
-Return ONLY the SQL.
-"""
-        sql = self.llm.prompt(prompt).strip()  # Ollama returns the LLM output
-        rows, err = self.sql_tool.run_query(sql)
-        if err or not rows:
-            return None, ""
-        # Simple format handling
-        if fmt == "int":
-            return int(list(rows[0].values())[0]), sql
-        return rows, sql
-
-    def _try_sql(self, query: str, docs: List[Dict], fmt: str) -> tuple[Any, str]:
-        """Keep the original template-based SQL as a fallback."""
-        # Copy your original _try_sql method here
-        ...
-
-    def _parse_int(self, text: str, query: str) -> int:
-        """Keep your original parsing method."""
-        ...
->>>>>>> 8e017c34374abf24b249e7e3dbbfa14b453c5c75

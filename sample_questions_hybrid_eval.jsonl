@@ -1,0 +1,6 @@
+{"id": "q1", "question": "How many days can unopened beverages be returned?", "format_hint": "int"}
+{"id": "q2", "question": "What was the category with the highest total quantity during summer 2012?", "format_hint": "str"}
+{"id": "q3", "question": "What was the average order value during winter 2012?", "format_hint": "str"}
+{"id": "q4", "question": "What are the top 3 products by revenue of all time?", "format_hint": "str"}
+{"id": "q5", "question": "What was the total revenue for beverages during summer 2012?", "format_hint": "str"}
+{"id": "q6", "question": "Which customer had the best gross margin in 2012?", "format_hint": "str"}
